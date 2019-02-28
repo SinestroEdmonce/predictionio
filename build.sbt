@@ -16,25 +16,6 @@
  */
 import PIOBuild._
 
-lazy val scalaSparkDepsVersion = Map(
-  "2.11" -> Map(
-    "2.0" -> Map(
-      "akka" -> "2.5.16",
-      "hadoop" -> "2.7.7",
-      "json4s" -> "3.2.11"),
-    "2.1" -> Map(
-      "akka" -> "2.5.17",
-      "hadoop" -> "2.7.7",
-      "json4s" -> "3.2.11"),
-    "2.2" -> Map(
-      "akka" -> "2.5.17",
-      "hadoop" -> "2.7.7",
-      "json4s" -> "3.2.11"),
-    "2.3" -> Map(
-      "akka" -> "2.5.17",
-      "hadoop" -> "2.7.7",
-      "json4s" -> "3.2.11")))
-
 name := "apache-predictionio-parent"
 
 version in ThisBuild := "0.14.0-SNAPSHOT"
@@ -60,23 +41,22 @@ sparkVersion in ThisBuild := sys.props.getOrElse("spark.version", "2.1.3")
 
 sparkBinaryVersion in ThisBuild := binaryVersion(sparkVersion.value)
 
-akkaVersion in ThisBuild := sys.props.getOrElse(
-  "akka.version",
-  scalaSparkDepsVersion(scalaBinaryVersion.value)(sparkBinaryVersion.value)("akka"))
+hadoopVersion in ThisBuild := sys.props.getOrElse("hadoop.version", "2.7.7")
+
+akkaVersion in ThisBuild := sys.props.getOrElse("akka.version", "2.5.17")
 
 lazy val es = sys.props.getOrElse("elasticsearch.version", "5.6.9")
 
 elasticsearchVersion in ThisBuild := es
 
-lazy val hbase = sys.props.getOrElse("hbase.version", "1.2.6")
+hbaseVersion in ThisBuild := sys.props.getOrElse("hbase.version", "1.2.6")
 
-hbaseVersion in ThisBuild := hbase
-
-json4sVersion in ThisBuild := scalaSparkDepsVersion(scalaBinaryVersion.value)(sparkBinaryVersion.value)("json4s")
-
-hadoopVersion in ThisBuild := sys.props.getOrElse(
-  "hadoop.version",
-  scalaSparkDepsVersion(scalaBinaryVersion.value)(sparkBinaryVersion.value)("hadoop"))
+json4sVersion in ThisBuild := {
+  sparkBinaryVersion.value match {
+    case "2.0" | "2.1" | "2.2" | "2.3" => "3.2.11"
+    case "2.4" => "3.5.3"
+  }
+}
 
 val conf = file("conf")
 
@@ -151,19 +131,19 @@ val core = (project in file("core")).
   enablePlugins(SbtTwirl).
   disablePlugins(sbtassembly.AssemblyPlugin)
 
-val tools = (project in file("tools")).
+val e2 = (project in file("e2")).
   dependsOn(core).
-  dependsOn(data).
+  settings(commonSettings: _*).
+  enablePlugins(GenJavadocPlugin).
+  disablePlugins(sbtassembly.AssemblyPlugin)
+
+val tools = (project in file("tools")).
+  dependsOn(e2).
   settings(commonSettings: _*).
   settings(commonTestSettings: _*).
   settings(skip in publish := true).
   enablePlugins(GenJavadocPlugin).
   enablePlugins(SbtTwirl)
-
-val e2 = (project in file("e2")).
-  settings(commonSettings: _*).
-  enablePlugins(GenJavadocPlugin).
-  disablePlugins(sbtassembly.AssemblyPlugin)
 
 val dataEs = if (majorVersion(es) == 1) dataElasticsearch1 else dataElasticsearch
 
